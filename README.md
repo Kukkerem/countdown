@@ -10,6 +10,12 @@ Specify duration in go format `1h2m3s`.
 countdown 25s
 ```
 
+Add a title for the countdown.
+
+```bash
+countdown 25s "title"
+```
+
 Add command with `&&` to run after countdown.
 
 ```bash

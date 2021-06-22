@@ -10,9 +10,9 @@ import (
 
 const (
 	usage = `usage:
-countdown 25s [-up]
-countdown 1m50s [-up]
-countdown 2h45m50s [-up]
+countdown 25s [-up] [title]
+countdown 1m50s [-up] [title]
+countdown 2h45m50s [-up] [title]
 `
 	tick = time.Second
 )
@@ -23,9 +23,11 @@ var (
 	queues         chan termbox.Event
 	startDone      bool
 	startX, startY int
+	titleX, titleY int
+	title          string
 )
 
-func draw(d time.Duration) {
+func draw(d time.Duration, title Text) {
 	w, h := termbox.Size()
 	clear()
 
@@ -35,9 +37,15 @@ func draw(d time.Duration) {
 	if !startDone {
 		startDone = true
 		startX, startY = w/2-text.width()/2, h/2-text.height()/2
+		titleX, titleY = w/2-title.width()/2, h/2-2*title.height()-text.height()/2
 	}
 
 	x, y := startX, startY
+	tx, ty := titleX, titleY
+	for _, t := range title {
+		echo(t, tx, ty)
+	}
+
 	for _, s := range text {
 		echo(s, x, y)
 		x += s.width()
@@ -72,14 +80,16 @@ func stop() {
 
 func countdown(timeLeft time.Duration, countUp bool) {
 	var exitCode int
+	t := make(Text, 0)
+	t = append(t, []string{title})
 
 	start(timeLeft)
 
-  	if countUp {
-    		timeLeft = 0;
-  	}
+	if countUp {
+		timeLeft = 0
+	}
 
-  	draw(timeLeft)
+	draw(timeLeft, t)
 
 loop:
 	for {
@@ -98,12 +108,12 @@ loop:
 		case <-ticker.C:
 			if countUp {
 				timeLeft += time.Duration(tick)
-		      	} else {
-		      		timeLeft -= time.Duration(tick)
-		      	}
-			draw(timeLeft)
+			} else {
+				timeLeft -= time.Duration(tick)
+			}
+			draw(timeLeft, t)
 		case <-timer.C:
-      			break loop
+			break loop
 		}
 	}
 
@@ -114,7 +124,7 @@ loop:
 }
 
 func main() {
-	if len(os.Args) < 2 || len(os.Args) > 3 {
+	if len(os.Args) < 2 || len(os.Args) > 4 {
 		stderr(usage)
 		os.Exit(2)
 	}
@@ -137,6 +147,16 @@ func main() {
 			queues <- termbox.PollEvent()
 		}
 	}()
-  	countUp := len(os.Args) == 3 && os.Args[2] == "-up"
+	countUp := len(os.Args) >= 3 && os.Args[2] == "-up"
+
+	switch len(os.Args) {
+	case 3:
+		if os.Args[2] != "-up" {
+			title = os.Args[2]
+		}
+	case 4:
+		title = os.Args[3]
+	}
+
 	countdown(timeLeft, countUp)
 }
